@@ -40,7 +40,8 @@ blue_shades_5 <- colorRampPalette(c("lightblue", "darkblue"))(5)
 blue_shades_6 <- colorRampPalette(c("lightblue", "darkblue"))(6)
 green_shades_5 <- colorRampPalette(c("#DAF2D0", "#12501A"))(5)
 green_shades_6 <- colorRampPalette(c("#DAF2D0", "#12501A"))(6)
-
+three_colors <- c("#FFB3BA", "#B3FFB3", "#B3D9FF")
+three_colors <- c("#FF7F0E", "#2CA02C", "#1F77B4")
 
 # ==================================================================================================================================================================
 # ==================================================================================================================================================================
@@ -302,7 +303,7 @@ rm(pdat)
 # comorbidity
 
 pdat <- copy(expdat1[setting == 0][order(diag)])
-pdat[,min := min(year), by = pragmaid]
+pdat[,min := min(year), by = .(pragmaid,diag)]
 pdat <- pdat[year == min,.(pragmaid,elix_sum_all,year,diag)][order(pragmaid,diag)]
 pdat$diag_lab <- factor(pdat$diag, labels = c("0 (any AUD)","1 (F10.0)","2 (F10.1)","3 (F10.2)","4 (F10.3+)"))
 pdat$diag_lab_rev <- factor(pdat$diag_lab, levels = rev(levels(pdat$diag_lab)))
@@ -322,6 +323,52 @@ ggsave(filename = paste0("figs/", Sys.Date(), "_fig_2_Ridge AUD severity comorbi
 
 ##  reporting
 pdat[, mean(elix_sum_all), by = diag_lab][order(diag_lab)]
+
+
+##  2) FIG 2 - Comorbidity by setting/pattern
+# ..............
+
+# comorbidity
+
+pdat <- copy(expdat1[diag != 0 & setting != 0,.(pragmaid,year,diag,var = "setting", val = setting,elix_sum_all)])
+pdat <- rbind(pdat,
+              expdat2[diag != 0 & pattern != 0,.(pragmaid,year,diag,var = "pattern", val = pattern,elix_sum_all)])
+
+pdat[,min := min(year), by = .(pragmaid,diag,var)]
+pdat <- unique(pdat[(var == "setting" & year == min) | (var == "pattern" & year == min),.(pragmaid,elix_sum_all,diag,var,val)][order(pragmaid,diag,var,val)])
+
+##  check
+pdat[pragmaid == "zy9RsMdBCr"]
+expdat1[pragmaid == "zy9RsMdBCr"]
+
+##  factor and labels
+pdat$var <- factor(pdat$var, labels = c("setting","pattern"))
+
+pdat$diag_lab <- factor(pdat$diag, labels = c("1:F10.0","2:F10.1","3:F10.2","4:F10.3+"))
+pdat$diag_lab_rev <- factor(pdat$diag_lab, levels = rev(levels(pdat$diag_lab)))
+
+pdat[, val_lab := as.character(val)]
+pdat[, val_lab := fifelse(var == "setting", dplyr::recode(val_lab, "0" = "0:any setting", "1" = "1:outpatient","2" = "2:inpatient","3" = "3:outpatient&inpatient"),
+                          dplyr::recode(val_lab, "0" = "0:any pattern", "1" = "1:M2D", "2" = "2:M2Q", "3" = "3:M2QF"))]
+pdat$val_lab <- factor(pdat$val_lab, levels = c("1:outpatient","2:inpatient","3:outpatient&inpatient",
+                                                "1:M2D","2:M2Q","3:M2QF"))
+
+#pdat$setting_lab <- factor(pdat$setting, labels = c("1 (outpatient)","2 (inpatient)","3 (out/inpatient)"))
+#pdat$setting_lab_rev <- factor(pdat$setting_lab, levels = rev(levels(pdat$setting_lab)))
+
+ggplot(pdat, aes(x = elix_sum_all, y = diag_lab_rev, fill = val_lab)) +
+  facet_grid(var ~ .) +
+  ggridges::geom_density_ridges() +
+  scale_fill_manual("", values = c(green_shades_6[1:3],blue_shades_6[1:3])) +
+  scale_x_continuous("Elixhauser comorbidity score (0-31)") +
+  scale_y_discrete("") +
+  theme(legend.position = "bottom", legend.direction = "horizontal") #+ 
+  #guides(fill = guide_legend(reverse=TRUE))
+
+ggsave(filename = paste0("figs/", Sys.Date(), "_fig_3_Ridge AUD severity comorbidity by setting-pattern.png"),
+       width = 10, height = 8)
+
+
 
 
 # ==================================================================================================================================================================
@@ -349,84 +396,134 @@ rm(pdat)
 ##  2) SUPP FIG 2 - VENN DIAG X SETTING
 # ..............
 
-##  diagnosis type for setting = outpatient
-pdat0 <- expdat1[year == 2019 & setting == 0 & diag == 1,.(pragmaid,f10_0 = T)]
+##  setting type for diagnoses = any
+pdat0 <- unique(expdat1[diag == 0 & setting == 1,.(pragmaid,setting_1 = T)])
 pdat0 <- merge(pdat0,
-               expdat1[year == 2019 & setting == 0 & diag == 2,.(pragmaid,f10_1 = T)], by = "pragmaid", all = T, allow.cartesian = T)
+               unique(expdat1[diag == 0 & setting == 2,.(pragmaid,setting_2 = T)]),
+               by = "pragmaid", all = T, allow.cartesian = T)
 pdat0 <- merge(pdat0,
-               expdat1[year == 2019 & setting == 0 & diag == 3,.(pragmaid,f10_2 = T)], by = "pragmaid", all = T, allow.cartesian = T)
-pdat0 <- merge(pdat0,
-               expdat1[year == 2019 & setting == 0 & diag == 4,.(pragmaid,f10_3 = T)], by = "pragmaid", all = T, allow.cartesian = T)
+               unique(expdat1[diag == 0 & setting == 3,.(pragmaid,setting_3 = T)]),
+               by = "pragmaid", all = T, allow.cartesian = T)
 
 pdat0 <- unique(pdat0)
 pdat0$pragmaid <- NULL
 pdat0[, (names(pdat0)) := lapply(.SD, function(x) ifelse(is.na(x), FALSE, x))]
 
-##  diagnosis type for setting = outpatient
-pdat1 <- expdat1[year == 2019 & setting == 1 & diag == 1,.(pragmaid,f10_0 = T)]
+
+##  setting type for diagnosis = F10.0
+pdat1 <- unique(expdat1[diag == 1 & setting == 1,.(pragmaid,setting_1 = T)])
 pdat1 <- merge(pdat1,
-              expdat1[year == 2019 & setting == 1 & diag == 2,.(pragmaid,f10_1 = T)], by = "pragmaid", all = T, allow.cartesian = T)
+               unique(expdat1[diag == 1 & setting == 2,.(pragmaid,setting_2 = T)]),
+               by = "pragmaid", all = T, allow.cartesian = T)
 pdat1 <- merge(pdat1,
-              expdat1[year == 2019 & setting == 1 & diag == 3,.(pragmaid,f10_2 = T)], by = "pragmaid", all = T, allow.cartesian = T)
-pdat1 <- merge(pdat1,
-              expdat1[year == 2019 & setting == 1 & diag == 4,.(pragmaid,f10_3 = T)], by = "pragmaid", all = T, allow.cartesian = T)
+               unique(expdat1[diag == 1 & setting == 3,.(pragmaid,setting_3 = T)]),
+               by = "pragmaid", all = T, allow.cartesian = T)
 
 pdat1 <- unique(pdat1)
 pdat1$pragmaid <- NULL
 pdat1[, (names(pdat1)) := lapply(.SD, function(x) ifelse(is.na(x), FALSE, x))]
 
-##  diagnosis type for setting = inpatient
-pdat2 <- expdat1[year == 2019 & setting == 2 & diag == 1,.(pragmaid,f10_0 = T)]
+
+##  setting type for diagnosis = F10.1
+pdat2 <- unique(expdat1[diag == 2 & setting == 1,.(pragmaid,setting_1 = T)])
 pdat2 <- merge(pdat2,
-               expdat1[year == 2019 & setting == 2 & diag == 2,.(pragmaid,f10_1 = T)], by = "pragmaid", all = T, allow.cartesian = T)
+               unique(expdat1[diag == 2 & setting == 2,.(pragmaid,setting_2 = T)]),
+               by = "pragmaid", all = T, allow.cartesian = T)
 pdat2 <- merge(pdat2,
-               expdat1[year == 2019 & setting == 2 & diag == 3,.(pragmaid,f10_2 = T)], by = "pragmaid", all = T, allow.cartesian = T)
-pdat2 <- merge(pdat2,
-               expdat1[year == 2019 & setting == 2 & diag == 4,.(pragmaid,f10_3 = T)], by = "pragmaid", all = T, allow.cartesian = T)
+               unique(expdat1[diag == 2 & setting == 3,.(pragmaid,setting_3 = T)]),
+               by = "pragmaid", all = T, allow.cartesian = T)
 
 pdat2 <- unique(pdat2)
 pdat2$pragmaid <- NULL
 pdat2[, (names(pdat2)) := lapply(.SD, function(x) ifelse(is.na(x), FALSE, x))]
 
 
-##  diagnosis type for setting = outpatient&inpatient
-pdat3 <- expdat1[year == 2019 & setting == 3 & diag == 1,.(pragmaid,f10_0 = T)]
+##  setting type for diagnosis = F10.2
+pdat3 <- unique(expdat1[diag == 3 & setting == 1,.(pragmaid,setting_1 = T)])
 pdat3 <- merge(pdat3,
-               expdat1[year == 2019 & setting == 3 & diag == 2,.(pragmaid,f10_1 = T)], by = "pragmaid", all = T, allow.cartesian = T)
+               unique(expdat1[diag == 3 & setting == 2,.(pragmaid,setting_2 = T)]),
+               by = "pragmaid", all = T, allow.cartesian = T)
 pdat3 <- merge(pdat3,
-               expdat1[year == 2019 & setting == 3 & diag == 3,.(pragmaid,f10_2 = T)], by = "pragmaid", all = T, allow.cartesian = T)
-pdat3 <- merge(pdat3,
-               expdat1[year == 2019 & setting == 3 & diag == 4,.(pragmaid,f10_3 = T)], by = "pragmaid", all = T, allow.cartesian = T)
+               unique(expdat1[diag == 3 & setting == 3,.(pragmaid,setting_3 = T)]),
+               by = "pragmaid", all = T, allow.cartesian = T)
 
 pdat3 <- unique(pdat3)
 pdat3$pragmaid <- NULL
 pdat3[, (names(pdat3)) := lapply(.SD, function(x) ifelse(is.na(x), FALSE, x))]
 
-##  PLOTS
-nrow(pdat0) #  11748
-nrow(pdat1) #  10642
-nrow(pdat2) #  3104
-nrow(pdat3) #  1998
 
-p0 <- plot(eulerr::euler(pdat1, shape = "ellipse"), main = "0-any (n=11,748)")
-p1 <- plot(eulerr::euler(pdat1, shape = "ellipse"), main = "1-outpatient (n=10,642)")
-p2 <- plot(eulerr::euler(pdat2, shape = "ellipse"), main = "2-inpatient (n=3,104)")
-p3 <- plot(eulerr::euler(pdat3, shape = "ellipse"), main = "3-outpatient & inpatient (n=1,998)")
+##  setting type for diagnosis = F10.3+
+pdat4 <- unique(expdat1[diag == 4 & setting == 1,.(pragmaid,setting_1 = T)])
+pdat4 <- merge(pdat4,
+               unique(expdat1[diag == 4 & setting == 2,.(pragmaid,setting_2 = T)]),
+               by = "pragmaid", all = T, allow.cartesian = T)
+pdat4 <- merge(pdat4,
+               unique(expdat1[diag == 4 & setting == 3,.(pragmaid,setting_3 = T)]),
+               by = "pragmaid", all = T, allow.cartesian = T)
+
+pdat4 <- unique(pdat4)
+pdat4$pragmaid <- NULL
+pdat4[, (names(pdat4)) := lapply(.SD, function(x) ifelse(is.na(x), FALSE, x))]
+
+##  PLOTS
+nrow(pdat0) #  21984
+nrow(pdat1) #  5347
+nrow(pdat2) #  11342
+nrow(pdat3) #  11500
+nrow(pdat4) #  7662
+
+p0 <- plot(eulerr::euler(pdat1, shape = "ellipse"), main = "0-any (n=21,984)")
+p1 <- plot(eulerr::euler(pdat1, shape = "ellipse"), main = "1-F10.0 (n=5,347)")
+p2 <- plot(eulerr::euler(pdat2, shape = "ellipse"), main = "2-F10.1 (n=11,342)")
+p3 <- plot(eulerr::euler(pdat3, shape = "ellipse"), main = "3-F10.2 (n=11,500)")
+p4 <- plot(eulerr::euler(pdat3, shape = "ellipse"), main = "3-F10.3+ (n=7,662)")
 
 png(filename = paste0("figs/", Sys.Date(), "_Suppl fig_2_Venn diag by setting.png"),width = 1400, height = 1200)
 
-gridExtra::grid.arrange(p0, p1, p2, p3, ncol = 2, nrow = 2)
+gridExtra::grid.arrange(p0, p1, p2, p3, p4, ncol = 3, nrow = 2)
 
 dev.off()
 
-##  reporting
+##  reporting see above
 
 rm(pdat0, pdat1, pdat2, pdat3,
    p0, p1, p2, p3)
 
 
+##  4) SUPP FIG 4 - AUD SEVERITY X SETTING X AGE
+# ..............
+
+pdat <- copy(expdat1[diag != 0 & setting != 0][order(diag)])
+pdat[,min := min(year), by = .(pragmaid,diag,setting)]
+pdat <- pdat[year == min,.(pragmaid,diag,setting,age)][order(pragmaid,diag)]
+
+pdat$diag_lab <- factor(pdat$diag, labels = c("1 (F10.0)","2 (F10.1)","3 (F10.2)","4 (F10.3+)"))
+pdat$diag_lab_rev <- factor(pdat$diag_lab, levels = rev(levels(pdat$diag_lab)))
+
+pdat$setting_lab <- factor(pdat$setting, labels = c("1 (outpatient)","2 (inpatient)","3 (out/inpatient)"))
+pdat$setting_lab_rev <- factor(pdat$setting_lab, levels = rev(levels(pdat$setting_lab)))
+
+ggplot(pdat, aes(x = age, y = diag_lab_rev, fill = setting_lab, color = setting_lab)) +
+  ggridges::geom_density_ridges(alpha = 0.5) +
+  scale_fill_manual("", values = three_colors)+
+  scale_color_manual("", values = three_colors)+
+  scale_x_continuous("Age") +
+  scale_y_discrete("") +
+  theme(legend.position = "bottom", legend.direction = "horizontal") 
+
+ggsave(filename = paste0("figs/", Sys.Date(), "_Suppl fig_3_Ridge AUD severity setting and age.png"),
+       width = 12, height = 6)
+
+##  reporting
+pdat[, mean(age), by = .(diag_lab,setting)][order(diag_lab,setting)]
+
+
+
 ##  3) SUPP FIG 3 - VENN DIAG X PATTERN
 # ..............
+
+
+!!! REVISE BASED ON SETTING !!!
 
 ##  diagnosis type for pattern = m1d
 pdat0 <- expdat2[year == 2019 & pattern == 0 & diag == 1,.(pragmaid,f10_0 = T)]
@@ -504,31 +601,6 @@ rm(pdat0, pdat1, pdat2, pdat3,
    p0, p1, p2, p3)
 
 
-##  4) SUPP FIG 4 - AUD SEVERITY X SETTING X AGE
-# ..............
-
-pdat <- copy(expdat1[diag != 0 & setting != 0][order(diag)])
-pdat[,min := min(year), by = .(pragmaid,diag,setting)]
-pdat <- pdat[year == min,.(pragmaid,diag,setting,age)][order(pragmaid,diag)]
-
-pdat$diag_lab <- factor(pdat$diag, labels = c("1 (F10.0)","2 (F10.1)","3 (F10.2)","4 (F10.3+)"))
-pdat$diag_lab_rev <- factor(pdat$diag_lab, levels = rev(levels(pdat$diag_lab)))
-
-pdat$setting_lab <- factor(pdat$setting, labels = c("1 (outpatient)","2 (inpatient)","3 (out/inpatient)"))
-pdat$setting_lab_rev <- factor(pdat$setting_lab, levels = rev(levels(pdat$setting_lab)))
-
-ggplot(pdat, aes(x = age, y = diag_lab_rev, fill = setting_lab, color = setting_lab)) +
-  ggridges::geom_density_ridges(alpha = 0.3) +
-  #scale_fill_manual("", values = rev(green_shades_6)) +
-  scale_x_continuous("Age") +
-  scale_y_discrete("") +
-  theme(legend.position = "bottom", legend.direction = "horizontal") 
-
-ggsave(filename = paste0("figs/", Sys.Date(), "_Suppl fig_4_Ridge AUD severity and setting.png"),
-       width = 12, height = 6)
-
-##  reporting
-pdat[, mean(elix_sum_all), by = diag_lab][order(diag_lab)]
 
 
 # 5) OLD FIGURES
