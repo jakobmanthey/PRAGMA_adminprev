@@ -277,7 +277,25 @@ select <- expdat1[year == 2020 & diag == 4 & setting == 2]$pragmaid[10]
 aud.dat[year == 2020 & pragmaid %in% select, table(icd)] # should have F10.3+
 aud.dat[year == 2020 & pragmaid %in% select, table(icd,setting)] # should have inpatient for F10.3+
 
-rm(select, y)
+select0 <- expdat1[year == 2021 & diag == 0 & setting == 3]$pragmaid
+select1 <- expdat1[year == 2021 & diag == 1 & setting == 3]$pragmaid
+select2 <- expdat1[year == 2021 & diag == 2 & setting == 3]$pragmaid
+select3 <- expdat1[year == 2021 & diag == 3 & setting == 3]$pragmaid
+select4 <- expdat1[year == 2021 & diag == 4 & setting == 3]$pragmaid
+
+select0[!select0 %in% c(select1,select2,select3,select4)]
+aud.dat[year == 2021 & pragmaid == "zyZdblYtRu"]
+expdat1[year == 2021 & pragmaid == "zyZdblYtRu"]
+
+aud.dat[year == 2020 & pragmaid %in% select, table(icd)] # should have F10.3+
+#aud.dat[year == 2020 & pragmaid %in% select, table(icd,setting)] # should have inpatient for F10.3+
+
+# factor
+expdat1$diag <- factor(expdat1$diag, levels = c(0:4))
+expdat1$setting <- factor(expdat1$setting, levels = c(0:3))
+
+rm(select, y,
+   select0,select1,select2,select3,select4)
 
 # ==================================================================================================================================================================
 # ==================================================================================================================================================================
@@ -422,6 +440,10 @@ aud.dat[year == 2019 & pragmaid %in% select, table(icd,date.aud)] # should have 
 select <- expdat2[year == 2020 & diag == 4 & pattern == 2]$pragmaid[10]
 aud.dat[year == 2020 & pragmaid %in% select, table(icd)] # should have F10.3+
 aud.dat[year == 2020 & pragmaid %in% select, table(icd,date.aud)] # should have F10.3+ in two quarters
+
+# factor
+expdat2$diag <- factor(expdat2$diag, levels = c(0:4))
+expdat2$pattern <- factor(expdat2$pattern, levels = c(0:3))
 
 rm(select, y)
 
@@ -643,7 +665,7 @@ pop.dat[,age.group := ifelse(age %like% "^18|^20", "18-24",
                                     ifelse(age %like% "^35|^40", "35-44",
                                            ifelse(age %like% "^45|^50", "45-54",
                                                   ifelse(age %like% "^55|^60", "55-64",
-                                                         ifelse(age %like% "^65|^70", "65-74","75+"))))))]
+                                                         ifelse(age %like% "^65|^70", "65-74","75-99"))))))]
 pop.dat[, table(age, age.group, useNA = "always")]
 
 # get sum pop for both GKV
