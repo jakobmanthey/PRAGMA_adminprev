@@ -173,7 +173,8 @@ aud.dat <- copy(alc.diag.dat)
 alc.diag_1 <- c("F10.0","T51.0","T51.9")
 alc.diag_2 <- "F10.1"
 alc.diag_3 <- "F10.2"
-alc.diag_4 <- c("F10.3","F10.4","F10.5","F10.6","F10.7","F10.8","F10.9",
+alc.diag_4 <- c("F10.3","F10.4")
+alc.diag_5 <- c("F10.5","F10.6","F10.7","F10.8","F10.9",
                 "E24.4","G31.2","G62.1","G72.1","I42.6",
                 "K29.2","K70.0","K70.1","K70.2","K70.3","K70.4","K70.9","K85.2","K85.20","K86.0")
 
@@ -196,6 +197,7 @@ for(y in years){
   subt2 <- sub[icd %in% alc.diag_2, .(pragmaid,gkv,diag = 2,setting)]
   subt3 <- sub[icd %in% alc.diag_3, .(pragmaid,gkv,diag = 3,setting)]
   subt4 <- sub[icd %in% alc.diag_4, .(pragmaid,gkv,diag = 4,setting)]
+  subt5 <- sub[icd %in% alc.diag_5, .(pragmaid,gkv,diag = 5,setting)]
   rm(sub)
   
   # within each diag type: determine setting:
@@ -239,12 +241,21 @@ for(y in years){
   subt4s3 <- subt4s3[temp == T,.(pragmaid,gkv,diag,setting = 3)]
   rm(subt4)
   
+  ##  type 5
+  subt5s0 <- subt5[,.(pragmaid,gkv,diag,setting = 0)]
+  subt5s1 <- subt5[setting %in% setting_1,.(pragmaid,gkv,diag,setting = 1)]
+  subt5s2 <- subt5[setting %in% setting_2,.(pragmaid,gkv,diag,setting = 2)]
+  subt5s3 <- unique(subt5[,.(temp = any(setting %in% setting_1) & any(setting %in% setting_2)), by = .(pragmaid,gkv,diag)])
+  subt5s3 <- subt5s3[temp == T,.(pragmaid,gkv,diag,setting = 3)]
+  rm(subt5)
+  
   # combine
   add <- rbind(subt0s0,subt0s1,subt0s2,subt0s3,
                subt1s0,subt1s1,subt1s2,subt1s3,
                subt2s0,subt2s1,subt2s2,subt2s3,
                subt3s0,subt3s1,subt3s2,subt3s3,
-               subt4s0,subt4s1,subt4s2,subt4s3)
+               subt4s0,subt4s1,subt4s2,subt4s3,
+               subt5s0,subt5s1,subt5s2,subt5s3)
   add$year <- y
   
   # remove duplicates (multiple settings per diag type):
@@ -258,15 +269,17 @@ for(y in years){
      subt1s0,subt1s1,subt1s2,subt1s3,
      subt2s0,subt2s1,subt2s2,subt2s3,
      subt3s0,subt3s1,subt3s2,subt3s3,
-     subt4s0,subt4s1,subt4s2,subt4s3)
+     subt4s0,subt4s1,subt4s2,subt4s3,
+     subt5s0,subt5s1,subt5s2,subt5s3)
   
 }
 
-expdat1[,table(diag,setting)] # should have all combinations 0:4 * 0:3
-nrow(expdat1) # 313928
+expdat1[,table(diag,setting)] # should have all combinations 0:5 * 0:3
+nrow(expdat1) # 316716
 
 # check:
 length(unique(expdat1$pragmaid)) # 22051
+length(unique(expdat1[diag == 0 & setting == 0]$pragmaid)) # 22051
 length(unique(aud.dat$pragmaid)) # 22051 --> all persons included
 
 select <- expdat1[year == 2019 & diag == 2 & setting == 3]$pragmaid[2]
@@ -274,28 +287,26 @@ aud.dat[year == 2019 & pragmaid %in% select, table(icd)] # should have F10.1
 aud.dat[year == 2019 & pragmaid %in% select, table(icd,setting)] # should have both inpatient and outpatient for F10.1
 
 select <- expdat1[year == 2020 & diag == 4 & setting == 2]$pragmaid[10]
-aud.dat[year == 2020 & pragmaid %in% select, table(icd)] # should have F10.3+
-aud.dat[year == 2020 & pragmaid %in% select, table(icd,setting)] # should have inpatient for F10.3+
+aud.dat[year == 2020 & pragmaid %in% select, table(icd)] # should have F10.3
+aud.dat[year == 2020 & pragmaid %in% select, table(icd,setting)] # should have inpatient for F10.3
 
 select0 <- expdat1[year == 2021 & diag == 0 & setting == 3]$pragmaid
 select1 <- expdat1[year == 2021 & diag == 1 & setting == 3]$pragmaid
 select2 <- expdat1[year == 2021 & diag == 2 & setting == 3]$pragmaid
 select3 <- expdat1[year == 2021 & diag == 3 & setting == 3]$pragmaid
 select4 <- expdat1[year == 2021 & diag == 4 & setting == 3]$pragmaid
+select5 <- expdat1[year == 2021 & diag == 5 & setting == 3]$pragmaid
 
-select0[!select0 %in% c(select1,select2,select3,select4)]
+select0[!select0 %in% c(select1,select2,select3,select4,select5)]
 aud.dat[year == 2021 & pragmaid == "zyZdblYtRu"]
 expdat1[year == 2021 & pragmaid == "zyZdblYtRu"]
 
-aud.dat[year == 2020 & pragmaid %in% select, table(icd)] # should have F10.3+
-#aud.dat[year == 2020 & pragmaid %in% select, table(icd,setting)] # should have inpatient for F10.3+
-
 # factor
-expdat1$diag <- factor(expdat1$diag, levels = c(0:4))
+expdat1$diag <- factor(expdat1$diag, levels = c(0:5))
 expdat1$setting <- factor(expdat1$setting, levels = c(0:3))
 
 rm(select, y,
-   select0,select1,select2,select3,select4)
+   select0,select1,select2,select3,select4,select5)
 
 # ==================================================================================================================================================================
 # ==================================================================================================================================================================
@@ -324,6 +335,7 @@ for(y in years){
   subt2 <- unique(sub[icd %in% alc.diag_2, .(pragmaid,gkv,diag = 2,case.id,date.aud)])
   subt3 <- unique(sub[icd %in% alc.diag_3, .(pragmaid,gkv,diag = 3,case.id,date.aud)])
   subt4 <- unique(sub[icd %in% alc.diag_4, .(pragmaid,gkv,diag = 4,case.id,date.aud)])
+  subt5 <- unique(sub[icd %in% alc.diag_5, .(pragmaid,gkv,diag = 5,case.id,date.aud)])
   rm(sub)
   
   # within each diag type: determine pattern of diagnoses
@@ -402,12 +414,28 @@ for(y in years){
   
   rm(subt4)
   
+  ##  type 4
+  subt5p0 <- subt5[,.(pragmaid,gkv,diag,pattern = 0)]
+  subt5p1 <- subt5[, .(temp = .N >= 2), by = .(pragmaid,gkv,diag)] # M2D
+  subt5p1 <- subt5p1[temp == T,.(pragmaid,gkv,diag,pattern = 1)]
+  
+  subt5p2 <- subt5[,.(pragmaid,gkv,diag,date.aud.q = quarter(date.aud, type = "quarter"))] # M2Q
+  subt5p2[, m2q := length(unique(date.aud.q)) >= 2, by = .(gkv,pragmaid,diag)]
+  subt5p2 <- subt5p2[m2q == T,.(pragmaid,gkv,diag,pattern = 2)]
+  
+  subt5p3 <- subt5[,.(pragmaid,gkv,diag,date.aud.q = quarter(date.aud, type = "quarter"))] # M2QF
+  subt5p3[, m2qf := shift(date.aud.q), by = .(gkv,pragmaid,diag)]
+  subt5p3 <- subt5p3[m2qf == 1,.(pragmaid,gkv,diag,pattern = 3)]
+  
+  rm(subt5)
+  
   # 
   add <- rbind(subt0p0,subt0p1,subt0p2,subt0p3,
                subt1p0,subt1p1,subt1p2,subt1p3,
                subt2p0,subt2p1,subt2p2,subt2p3,
                subt3p0,subt3p1,subt3p2,subt3p3,
-               subt4p0,subt4p1,subt4p2,subt4p3)
+               subt4p0,subt4p1,subt4p2,subt4p3,
+               subt5p0,subt5p1,subt5p2,subt5p3)
   add$year <- y
   
   # remove duplicates (multiple dates/case.ids per diag type):
@@ -421,15 +449,17 @@ for(y in years){
      subt1p0,subt1p1,subt1p2,subt1p3,
      subt2p0,subt2p1,subt2p2,subt2p3,
      subt3p0,subt3p1,subt3p2,subt3p3,
-     subt4p0,subt4p1,subt4p2,subt4p3)
+     subt4p0,subt4p1,subt4p2,subt4p3,
+     subt5p0,subt5p1,subt5p2,subt5p3)
   
 }
 
 expdat2[,table(diag,pattern)] # should have all combinations 0:4 * 0:3
-nrow(expdat2) # 395248
+nrow(expdat2) # 397535
 
 # check:
 length(unique(expdat2$pragmaid)) # 22051
+length(unique(expdat2[diag == 0 & pattern == 0]$pragmaid)) # 22051
 length(unique(aud.dat$pragmaid)) # 22051 --> all persons included
 
 # check:
@@ -438,11 +468,11 @@ aud.dat[year == 2019 & pragmaid %in% select, table(icd)] # should have F10.1
 aud.dat[year == 2019 & pragmaid %in% select, table(icd,date.aud)] # should have F10.1 in two subsequent quarters
 
 select <- expdat2[year == 2020 & diag == 4 & pattern == 2]$pragmaid[10]
-aud.dat[year == 2020 & pragmaid %in% select, table(icd)] # should have F10.3+
-aud.dat[year == 2020 & pragmaid %in% select, table(icd,date.aud)] # should have F10.3+ in two quarters
+aud.dat[year == 2020 & pragmaid %in% select, table(icd)] # should have F10.3
+aud.dat[year == 2020 & pragmaid %in% select, table(icd,date.aud)] # should have F10.3 in two quarters
 
 # factor
-expdat2$diag <- factor(expdat2$diag, levels = c(0:4))
+expdat2$diag <- factor(expdat2$diag, levels = c(0:5))
 expdat2$pattern <- factor(expdat2$pattern, levels = c(0:3))
 
 rm(select, y)
@@ -497,7 +527,10 @@ expdat2[, age.group := ifelse(age<25,"18-24",
                                                           ifelse(age<75,"65-74","75-99"))))))]
 expdat2[, table(age,age.group, useNA = "always")]
 expdat2 <- expdat2[!age<18]
-length(unique(expdat1$pragmaid)) # 21984
+length(unique(expdat1$pragmaid)) # 21,984
+
+nrow(aud.dat[pragmaid %in% unique(expdat1$pragmaid)]) # 257,530
+
 
 # COMORDITY
 comorb.dat <- diag.dat[pragmaid %in% unique(expdat1$pragmaid)]
