@@ -47,6 +47,20 @@ id.dat <- readRDS(filename)
 filename <- paste0("data/input/1_data_insurance periods_", DATE,".rds")
 ins.dat <- readRDS(filename)
 
+# Employment period
+filename <- paste0("data/input/1_data_employment periods_", DATE,".rds")
+emp.dat <- readRDS(filename)
+
+# Alcohol diagnoses
+filename <- paste0("data/input/1_data_alcohol diagnoses_", DATE,".rds")
+alc.diag.dat <- readRDS(filename)
+rm(filename)
+
+# All diagnoses
+filename <- paste0("data/input/1_data_all diagnoses_",DATE,".rds")
+diag.dat <- readRDS(filename)
+rm(filename)
+
 # Versicherte
 ##  AOK
 pop.aok.17 <- data.table(read.csv("data/input/population/GRUND_2017.csv"))
@@ -77,15 +91,6 @@ pop.dak.21 <- data.table(openxlsx::read.xlsx("data/input/population/DAK_Versiche
                                              sheet = "2021", cols = 1:3))
 pop.dak.21$year <- 2021
 
-# Alcohol diagnoses
-filename <- paste0("data/input/1_data_alcohol diagnoses_", DATE,".rds")
-alc.diag.dat <- readRDS(filename)
-rm(filename)
-
-# All diagnoses
-filename <- paste0("data/input/1_data_all diagnoses_",DATE,".rds")
-diag.dat <- readRDS(filename)
-rm(filename)
 
 
 # ==================================================================================================================================================================
@@ -138,7 +143,7 @@ alc.diag.dat <- alc.diag.dat[icd %in% alc.diag_0 & setting %like% "inpat|outpat"
                      .(gkv,pragmaid,setting,case.id,icd,icd_type,date.aud = fifelse(setting == "outpatient", date.diag.median,
                                                                             fifelse(setting == "inpatient", date.diag.start, NA)))]
 alc.diag.dat[, year := year(date.aud)]
-alc.diag.dat <- merge(in.dat,alc.diag.dat,by = c("gkv","pragmaid","year"), all = T)
+alc.diag.dat <- merge(in.dat,alc.diag.dat,by = c("gkv","pragmaid","year"), all.x = T)
 alc.diag.dat <- alc.diag.dat[!is.na(setting)]
                   
 ## keep only inpatient = admission/primary/secondary & outpatient = confirmed
@@ -151,11 +156,11 @@ alc.diag.dat <- alc.diag.dat[setting %like% "inpat|outpat" & setting != "outpati
 alc.diag.dat <- alc.diag.dat[year %in% years]
 
 ##  remove people without ID
-alc.diag.dat[is.na(pragmaid)] # 6 persons
-alc.diag.dat <- alc.diag.dat[!is.na(pragmaid)]
+alc.diag.dat[is.na(pragmaid)] # 0 persons
+#alc.diag.dat <- alc.diag.dat[!is.na(pragmaid)]
 
-nrow(alc.diag.dat) # 257686
-length(unique(alc.diag.dat$pragmaid)) # 22051
+nrow(alc.diag.dat) # 256947
+length(unique(alc.diag.dat$pragmaid)) # 21954
 
 aud.dat <- copy(alc.diag.dat)
 
@@ -275,12 +280,12 @@ for(y in years){
 }
 
 expdat1[,table(diag,setting)] # should have all combinations 0:5 * 0:3
-nrow(expdat1) # 316716
+nrow(expdat1) # 315526
 
 # check:
-length(unique(expdat1$pragmaid)) # 22051
-length(unique(expdat1[diag == 0 & setting == 0]$pragmaid)) # 22051
-length(unique(aud.dat$pragmaid)) # 22051 --> all persons included
+length(unique(expdat1$pragmaid)) # 21954
+length(unique(expdat1[diag == 0 & setting == 0]$pragmaid)) # 21954
+length(unique(aud.dat$pragmaid)) # 21954 --> all persons included
 
 select <- expdat1[year == 2019 & diag == 2 & setting == 3]$pragmaid[2]
 aud.dat[year == 2019 & pragmaid %in% select, table(icd)] # should have F10.1
@@ -455,12 +460,12 @@ for(y in years){
 }
 
 expdat2[,table(diag,pattern)] # should have all combinations 0:4 * 0:3
-nrow(expdat2) # 397535
+nrow(expdat2) # 396572
 
 # check:
-length(unique(expdat2$pragmaid)) # 22051
-length(unique(expdat2[diag == 0 & pattern == 0]$pragmaid)) # 22051
-length(unique(aud.dat$pragmaid)) # 22051 --> all persons included
+length(unique(expdat2$pragmaid)) # 21954
+length(unique(expdat2[diag == 0 & pattern == 0]$pragmaid)) # 21954
+length(unique(aud.dat$pragmaid)) # 21954 --> all persons included
 
 # check:
 select <- expdat2[year == 2019 & diag == 2 & pattern == 3]$pragmaid[2]
@@ -486,20 +491,22 @@ rm(select, y)
 # ______________________________________________________________________________________________________________________
 
 unique(expdat1[year == 2019, .(diag,pragmaid)])[, table(diag)] # 
-unique(expdat2[year == 2019, .(diag,pragmaid)])[, table(diag)] # should be the same; 1619 persons with F10.1 (diag = 1) in 2019
+unique(expdat2[year == 2019, .(diag,pragmaid)])[, table(diag)] # should be the same; 1587 persons with F10.1 (diag = 1) in 2019
 
 # test
-aud.dat[year == 2019 & icd %in% alc.diag_1, length(unique(pragmaid))] # 1619 -> as above
+aud.dat[year == 2019 & icd %in% alc.diag_1, length(unique(pragmaid))] # 1587 -> as above
 
 # ==================================================================================================================================================================
 # ==================================================================================================================================================================
 # ==================================================================================================================================================================
 # ==================================================================================================================================================================
 
-# 7) ADD SEX/AGE/COMORB TO EXPOSURE DATA
+# 7) ADD SEX/AGE/EMP/COMORB TO EXPOSURE DATA
 # ______________________________________________________________________________________________________________________
 
 # AGE AND SEX
+# ............................................
+
 # add sex and yob
 expdat1 <- merge(expdat1, id.dat[,.(pragmaid,sex,yob)], by = c("pragmaid"), all.x = T)
 expdat1[is.na(sex) | is.na(yob)]
@@ -527,12 +534,64 @@ expdat2[, age.group := ifelse(age<25,"18-24",
                                                           ifelse(age<75,"65-74","75-99"))))))]
 expdat2[, table(age,age.group, useNA = "always")]
 expdat2 <- expdat2[!age<18]
-length(unique(expdat1$pragmaid)) # 21,984
+length(unique(expdat1$pragmaid)) # 21,954
 
-nrow(aud.dat[pragmaid %in% unique(expdat1$pragmaid)]) # 257,530
+nrow(aud.dat[pragmaid %in% unique(expdat1$pragmaid)]) # 256,947
+
+# EMPLOYMENT
+# ............................................
+
+# add employment for each year:
+
+# combine with years and keep only emp periods falling into the years
+add <- merge(unique(expdat1[,.(pragmaid,gkv,year)]),
+                 emp.dat, by = c("pragmaid","gkv"), all.x = T, allow.cartesian = T)
+add <- add[ year %between% list(year(date.emp.start), year(date.emp.end))]
+
+##  calculate days of period between start and end to select relevant periods
+add[, year.start := as.Date(paste0(year,"-01-01"))]
+add[, year.end := as.Date(paste0(year,"-12-31"))]
+add[, days_overlap := pmin(year.end, date.emp.end) - pmax(year.start, date.emp.start) + 1]
+add <- add[days_overlap >=0]
+
+##  determine dominant period in each year
+add[, days_all := sum(days_overlap), by = .(pragmaid,gkv,year)]
+add[, table(days_all)] # max 365/366 days 
+add[, days_prop := as.numeric(days_overlap) / as.numeric(days_all)]
+add[, select := max(days_prop), by = .(pragmaid,gkv,year)]
+add[, select := days_prop == select]
+add <- add[select == T,.(pragmaid,gkv,year,emp.type,days_prop)]
+
+
+### more than 1 period: employed > unemployed > retired > other
+select <- add[, .N, by = .(pragmaid,gkv,year)][N>1]$pragmaid
+add[pragmaid %in% select]
+add[pragmaid %in% select, check := ifelse(any(emp.type == "employed"), "employed",
+                                          ifelse(any(emp.type == "unemployed"), "unemployed",
+                                                 ifelse(any(emp.type == "retired"), "retired", "other"))), 
+    by = .(pragmaid,gkv,year)]
+add <- unique(add[is.na(check) | check == emp.type,.(pragmaid,gkv,year,emp.type)])
+
+##  check
+add[, .N, by = .(pragmaid,gkv,year)][N!=1] # none
+add[, .N, by = .(pragmaid,gkv)][N>5] # none
+
+expdat1 <- merge(expdat1,add,by = c("pragmaid","gkv","year"), all.x = T)
+
+expdat2 <- merge(expdat2,add,by = c("pragmaid","gkv","year"), all.x = T)
+rm(select,add)
+
+##  missing
+expdat1[is.na(emp.type)] # none
+
+# dimensions
+length(unique(expdat1$pragmaid)) # 21954
+length(unique(expdat2$pragmaid)) # 21954
 
 
 # COMORDITY
+# ............................................
+
 comorb.dat <- diag.dat[pragmaid %in% unique(expdat1$pragmaid)]
 
 ## keep only inpatient = admission/primary/secondary & outpatient = confirmed
@@ -540,10 +599,11 @@ comorb.dat[, table(setting, icd_type)] #
 comorb.dat[setting %like% "inpat|outpat" & setting != "outpatient surgery", 
            prop.table(table(setting, icd_type %like% "admission|primary|secondary|confirmed"),1)] # include > 90% of diagnoses in both settings
 comorb.dat <- comorb.dat[setting %like% "inpat|outpat" & setting != "outpatient surgery" & icd_type %like% "admission|primary|secondary|confirmed"]
-nrow(comorb.dat) # 5810580
+nrow(comorb.dat) # 5807851
 
 ##  remove year < 2017
 comorb.dat <- comorb.dat[year(date.diag.start) >=2017]
+nrow(comorb.dat) # 4910666
 comorb.dat[, year := year(date.diag.start)]
 c2017 <- comorb.dat[year == 2017]
 c2018 <- comorb.dat[year == 2018]
@@ -582,6 +642,7 @@ e2021 <- comorbidity::comorbidity(x = c2021,
                                   map = "elixhauser_icd10_quan",
                                   assign0 = T,
                                   tidy.codes = T)
+
 names(e2017)[!names(e2017) %like% "pragmaid"] <- 
   names(e2018)[!names(e2018) %like% "pragmaid"] <- 
   names(e2019)[!names(e2019) %like% "pragmaid"] <- 
@@ -618,6 +679,22 @@ expdat1 <- merge(expdat1, elix_all, by = c("pragmaid","year"), all.x = T)
 expdat1[is.na(elix_sum_all)]
 expdat2 <- merge(expdat2, elix_all, by = c("pragmaid","year"), all.x = T)
 expdat2[is.na(elix_sum_all)]
+
+##  get data.table with information for all disease groups
+elix_cats <- rbind(e2017sum,
+                   e2018sum,
+                   e2019sum,
+                   e2020sum,
+                   e2021sum)
+
+names(elix_cats)
+attr(e2017, "variable.labels")
+names(elix_cats) <- c("pragmaid",attr(e2017, "variable.labels")[2:32],"elix_sum_all","year")
+
+elix_cats <- melt(elix_cats,id.vars = c("pragmaid","year","elix_sum_all"), variable.name = "disease",value.name = "elix")
+elix_cats[, disease_nr := 1:.N, by = .(pragmaid,year)]
+elix_cats[, table(disease,disease_nr)]
+elix_cats <- elix_cats[order(pragmaid,year,disease_nr)]
 
 rm(comorb.dat,elix_all,
    c2017,c2018,c2019,c2020,c2021,
@@ -715,3 +792,4 @@ pop.dat <- pop.dat[,.(pop = sum(pop)), by = .(year,sex,age.group)]
 saveRDS(pop.dat, paste0("data/output/preprocessed/", Sys.Date(), "_insurance_population.RDS"))
 saveRDS(expdat1, paste0("data/output/preprocessed/", Sys.Date(), "_exposure data_type and setting.RDS"))
 saveRDS(expdat2, paste0("data/output/preprocessed/", Sys.Date(), "_exposure data_type and pattern.RDS"))
+saveRDS(elix_cats, paste0("data/output/preprocessed/", Sys.Date(), "_elixhauser data.RDS"))
