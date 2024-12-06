@@ -790,6 +790,7 @@ pop.dat <- pop.dat[,.(pop = sum(pop)), by = .(year,sex,age.group)]
 # ______________________________________________________________________________________________________________________
 
 saveRDS(pop.dat, paste0("data/output/preprocessed/", Sys.Date(), "_insurance_population.RDS"))
+saveRDS(aud.dat, paste0("data/output/preprocessed/", Sys.Date(), "_alcohol diagnoses data.RDS"))
 saveRDS(expdat1, paste0("data/output/preprocessed/", Sys.Date(), "_exposure data_type and setting.RDS"))
 saveRDS(expdat2, paste0("data/output/preprocessed/", Sys.Date(), "_exposure data_type and pattern.RDS"))
 saveRDS(elix_cats, paste0("data/output/preprocessed/", Sys.Date(), "_elixhauser data.RDS"))
