@@ -20,7 +20,7 @@ inpath <- paste0("data/output/preprocessed/")
 
 # date
 DATE <- "2024-08-19"
-DATE2 <- "2024-12-02"
+DATE2 <- "2024-12-06"
 #DATE2 <- Sys.Date()
 
 # load libraries
@@ -54,8 +54,8 @@ five_colors <- c("#FF7F0E", "#2CA02C", "#1F77B4", "#9467BD", "#8C564B")
 
 ##  prepared data
 pop.dat <- readRDS(paste0(inpath, DATE2, "_insurance_population.RDS"))
+diag.dat <- readRDS(paste0(inpath, DATE2, "_alcohol diagnoses data.RDS"))
 expdat <- readRDS(paste0(inpath, DATE2, "_exposure data_type and setting.RDS"))
-#expdat2 <- readRDS(paste0(inpath, DATE2, "_exposure data_type and pattern.RDS"))
 elixdat <- readRDS(paste0(inpath, DATE2, "_elixhauser data.RDS"))
 
 ##  remove setting information
@@ -358,7 +358,48 @@ ggsave(filename = paste0("figs/", Sys.Date(), "_fig_3_heatmap AUD severity and E
 # 5) SUPPL FIGURES
 # ______________________________________________________________________________________________________________________
 
-##  3) SUPP FIG 3 - COMORBIDITY X PATTERN/SETTING
+##  1) SUPP FIG 1 - TYPE OF DIAG IN AUD LEVEL 5
+# ..............
+
+# get only AUD level 5 diagnoses from those concerned:
+select <- unique(expdat[diag == 5]$pragmaid)
+alc.diag_5 <- c("F10.5","F10.6","F10.7","F10.8","F10.9",
+                "E24.4","G31.2","G62.1","G72.1","I42.6",
+                "K29.2","K70.0","K70.1","K70.2","K70.3","K70.4","K70.9","K85.2","K85.20","K86.0")
+
+pdat <- unique(diag.dat[pragmaid %in% select & icd %in% alc.diag_5,.(pragmaid,icd)])
+pdat[, length(unique(pragmaid))] # 6003
+
+# collapse diagnoses
+pdat[, table(icd)]
+pdat[, icd_group := icd]
+pdat[, icd_group := ifelse(icd_group %like% "F10","F10.5-9",
+                           ifelse(icd_group %like% "K70","K70.1-9",icd_group))]
+pdat[, table(icd,icd_group)]
+pdat <- unique(pdat[,.(pragmaid,icd_group)])
+
+# collapse combinations
+pdat <- pdat[order(pragmaid,icd_group)]
+pdat <- pdat[, .(icd_group = paste0(icd_group, collapse = "&")), by = pragmaid]
+
+pdat <- pdat[, .N, by = icd_group]
+
+# mosaic plot
+require( treemapify )
+
+ggplot(pdat, aes(area = N)) +
+  geom_treemap(fill = green_shades_5[5]) +
+  geom_treemap_text(aes(label = icd_group),
+                    color = "white")
+
+ggsave(filename = paste0("figs/", Sys.Date(), "_Suppl fig_1_Diagnoses AUD level 5.png"),
+       width = 10, height = 6)
+
+pdat[order(N, decreasing = T),.(icd_group,prop = N/sum(N))][1:10]
+
+rm(pdat)
+
+##  2) SUPP FIG 2 - COMORBIDITY X PATTERN/SETTING
 # ..............
 
 pdat <- copy(ses.dat[diag != 0,.(pragmaid,year,diag)])
@@ -376,7 +417,7 @@ ggplot(pdat, aes(x = diag_lab, y = elix_sum_all, fill = diag_lab)) +
   scale_x_discrete("") +
   scale_y_continuous("Elixhauser comorbidity score (0-31)")
 
-ggsave(filename = paste0("figs/", Sys.Date(), "_Suppl fig_1_AUD severity comorbidity by diag.png"),
+ggsave(filename = paste0("figs/", Sys.Date(), "_Suppl fig_2_AUD severity comorbidity by diag.png"),
        width = 10, height = 6)
 
 
