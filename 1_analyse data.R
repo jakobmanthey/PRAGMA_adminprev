@@ -54,8 +54,8 @@ five_colors <- c("#FF7F0E", "#2CA02C", "#1F77B4", "#9467BD", "#8C564B")
 
 ##  prepared data
 pop.dat <- readRDS(paste0(inpath, DATE2, "_insurance_population.RDS"))
-expdat1 <- readRDS(paste0(inpath, DATE2, "_exposure data_type and setting.RDS"))
-expdat2 <- readRDS(paste0(inpath, DATE2, "_exposure data_type and pattern.RDS"))
+expdat <- readRDS(paste0(inpath, DATE2, "_exposure data_type and setting.RDS"))
+#expdat2 <- readRDS(paste0(inpath, DATE2, "_exposure data_type and pattern.RDS"))
 elixdat <- readRDS(paste0(inpath, DATE2, "_elixhauser data.RDS"))
 
 ##  unique AUD dat across all years
