@@ -284,13 +284,23 @@ names(pdat) <- c("1:F10.0\n(n=5,324)",
                  "4:F10.3\n(n=3,016)",
                  "5:K70+\n(n=6,003)")
 
-png(filename = paste0("figs/", Sys.Date(), "_fig_1_Venn AUD severity.png"),width = 1200, height = 1200)
+#png(filename = paste0("figs/", Sys.Date(), "_fig_1_Venn AUD severity.png"),width = 1200, height = 1200)
+
+plot(eulerr::euler(pdat, shape = "ellipse"), 
+     fills = five_colors,
+     labels = list(cex = 2))
+
+#dev.off()
+
+pdf(file = paste0("figs/", Sys.Date(), "_fig_1_Venn AUD severity.pdf"),width = 12.5, height = 12.5)
+#tiff(file = paste0("figs/", Sys.Date(), "_fig_1_Venn AUD severity.tiff"),width = 1200, height = 1200)
 
 plot(eulerr::euler(pdat, shape = "ellipse"), 
      fills = five_colors,
      labels = list(cex = 2))
 
 dev.off()
+
 rm(pdat)
 
 
@@ -312,6 +322,8 @@ ggplot(pdat, aes(x = diag_lab, y = prev, fill = year)) +
         axis.text.x = element_text(angle = 45, vjust = 0.5))
 
 ggsave(filename = paste0("figs/", Sys.Date(), "_fig_2_Bar AUD severity sex age year.png"),
+       width = 12, height = 6)
+ggsave(filename = paste0("figs/", Sys.Date(), "_fig_2_Bar AUD severity sex age year.pdf"),
        width = 12, height = 6)
 
 rm(pdat)
@@ -347,6 +359,8 @@ ggplot(pdat2, aes(x = group, y = label, fill = percentage)) +
   
 ggsave(filename = paste0("figs/", Sys.Date(), "_fig_3_heatmap AUD severity and Elix.png"),
        width = 12, height = 8)
+ggsave(filename = paste0("figs/", Sys.Date(), "_fig_3_heatmap AUD severity and Elix.pdf"),
+       width = 12, height = 8)
 
 
 
@@ -380,7 +394,7 @@ pdat <- unique(pdat[,.(pragmaid,icd_group)])
 
 # collapse combinations
 pdat <- pdat[order(pragmaid,icd_group)]
-pdat <- pdat[, .(icd_group = paste0(icd_group, collapse = "&")), by = pragmaid]
+pdat <- pdat[, .(icd_group = paste0(icd_group, collapse = " &\n")), by = pragmaid]
 
 pdat <- pdat[, .N, by = icd_group]
 
